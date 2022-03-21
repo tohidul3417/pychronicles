@@ -1,10 +1,30 @@
+#!/usr/bin/env python3
+"""
+Simple Minesweeper Game
+
+A terminal-based implementation of the classic Minesweeper game
+with standard coordinate notation (A1, B2, etc.) and minimal UI.
+"""
+
 import random
 import os
 
 def clear_screen():
+    """Clear the terminal screen, cross-platform."""
     os.system('cls' if os.name == 'nt' else 'clear')
 
 def create_board(width, height, num_mines):
+    """
+    Create a new Minesweeper board.
+    
+    Args:
+        width (int): Width of the board
+        height (int): Height of the board
+        num_mines (int): Number of mines to place
+        
+    Returns:
+        list: 2D list representing the board, with mines ('M') and numbers
+    """
     # Create an empty board
     board = [['0' for _ in range(width)] for _ in range(height)]
     
@@ -37,6 +57,16 @@ def create_board(width, height, num_mines):
     return board
 
 def display_board(board, revealed, width, height, game_over=False):
+    """
+    Display the current state of the game board.
+    
+    Args:
+        board (list): 2D list with the game board
+        revealed (list): 2D list tracking revealed cells
+        width (int): Width of the board
+        height (int): Height of the board
+        game_over (bool): Whether the game is over
+    """
     clear_screen()
     
     print("MINESWEEPER - 5x5 - 4 mines")
@@ -62,6 +92,7 @@ def display_board(board, revealed, width, height, game_over=False):
         print()
 
 def show_help():
+    """Display help information for the game."""
     clear_screen()
     print("MINESWEEPER HELP")
     print("Goal: Reveal all safe cells without hitting mines")
@@ -72,6 +103,17 @@ def show_help():
     input("Press Enter to return...")
 
 def parse_coordinates(move, width, height):
+    """
+    Parse user input into board coordinates.
+    
+    Args:
+        move (str): User input string (e.g., 'A1', 'B3')
+        width (int): Width of the board
+        height (int): Height of the board
+        
+    Returns:
+        tuple: (x, y) coordinates or None if invalid
+    """
     if len(move) < 2:
         return None
     
@@ -94,7 +136,47 @@ def parse_coordinates(move, width, height):
     
     return (x, y)
 
+def flood_fill(board, revealed, x, y, width, height):
+    """
+    Reveal adjacent empty cells using flood fill algorithm.
+    
+    Args:
+        board (list): 2D list with the game board
+        revealed (list): 2D list tracking revealed cells
+        x (int): X-coordinate of starting cell
+        y (int): Y-coordinate of starting cell
+        width (int): Width of the board
+        height (int): Height of the board
+        
+    Returns:
+        int: Number of newly revealed cells
+    """
+    if revealed[y][x] or board[y][x] == 'M':
+        return 0
+    
+    queue = [(x, y)]
+    revealed[y][x] = True
+    count = 1  # Count this cell
+    
+    while queue:
+        cx, cy = queue.pop(0)
+        
+        # If cell has no adjacent mines, reveal its neighbors
+        if board[cy][cx] == '0':
+            for dy in [-1, 0, 1]:
+                for dx in [-1, 0, 1]:
+                    nx, ny = cx + dx, cy + dy
+                    if (0 <= nx < width and 0 <= ny < height and 
+                        not revealed[ny][nx] and board[ny][nx] != 'M'):
+                        revealed[ny][nx] = True
+                        count += 1
+                        if board[ny][nx] == '0':
+                            queue.append((nx, ny))
+                            
+    return count
+
 def play_game():
+    """Main game loop for Minesweeper."""
     # Game settings
     width = 5
     height = 5
@@ -132,29 +214,17 @@ def play_game():
             
             # Reveal the cell
             revealed[y][x] = True
+            revealed_count += 1
             
             # Check if mine was hit
             if board[y][x] == 'M':
                 game_over = True
                 print("BOOM! Game over!")
             else:
-                revealed_count += 1
-                
                 # Auto-reveal adjacent cells if the revealed cell has no adjacent mines
                 if board[y][x] == '0':
-                    queue = [(x, y)]
-                    while queue:
-                        cx, cy = queue.pop(0)
-                        for dy in [-1, 0, 1]:
-                            for dx in [-1, 0, 1]:
-                                nx, ny = cx + dx, cy + dy
-                                if (0 <= nx < width and 0 <= ny < height and 
-                                    not revealed[ny][nx]):
-                                    revealed[ny][nx] = True
-                                    if board[ny][nx] != 'M':
-                                        revealed_count += 1
-                                    if board[ny][nx] == '0':
-                                        queue.append((nx, ny))
+                    # Subtract 1 since we already counted the initial cell
+                    revealed_count += flood_fill(board, revealed, x, y, width, height) - 1
                 
                 # Check for win
                 if revealed_count == total_safe_cells:
@@ -165,7 +235,8 @@ def play_game():
     display_board(board, revealed, width, height, game_over=True)
     input("Game over. Press Enter to exit...")
 
-if __name__ == "__main__":
+def main():
+    """Entry point for the Minesweeper game."""
     clear_screen()
     print("MINESWEEPER - 5x5 grid with 4 mines")
     print("Use standard notation: A1, B3, etc.")
@@ -173,3 +244,6 @@ if __name__ == "__main__":
     input("Press Enter to start...")
     
     play_game()
+
+if __name__ == "__main__":
+    main()
